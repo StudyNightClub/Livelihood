@@ -1,0 +1,206 @@
+#!/usr/bin/env python3
+# coding=utf-8
+
+import requests
+import urllib.request
+import urllib.parse
+import zipfile
+import sqlite3
+import time
+
+
+### URL name ###
+url_water = 'http://data.taipei/opendata/datalist/apiAccess?scope=resourceAquire&rid=a242ee9b-b954-4ae9-9827-2344c5dfeaea'
+
+url_road = 'http://data.taipei/opendata/datalist/apiAccess?scope=resourceAquire&rid=201d8ae8-dffc-4d17-ae1f-e58d8a95b162'
+
+file_name_power = '台灣電力公司_計畫性工作停電資料.zip'
+url_power = 'http://data.taipower.com.tw/opendata/apply/file/d077004/' + urllib.parse.quote(file_name_power)
+txt_name_power = 'wkotgnews/102.txt'
+
+
+### Request ###
+web_request_water = requests.get(url_water)
+web_request_road = requests.get(url_road)
+
+if web_request_water.status_code == 200:
+    print('Web (WATER OUTAGE) request is ok.')
+else:
+    print('Web (WATER OUTAGE) request is NOT ok. Request status code = %s.' 
+        %(web_request_water.status_code))
+        
+if web_request_road.status_code == 200:
+    print('Web (ROAD CONSTRUCTION) request is ok.')
+else:
+    print('Web (ROAD CONSTRUCTION) request is NOT ok. Request status code = %s.' 
+        %(web_request_road.status_code))
+	
+json_water = web_request_water.json()
+json_road = web_request_road.json()
+
+
+### Download file ###
+urllib.request.urlretrieve(url_power, file_name_power)
+
+if urllib.request.urlretrieve != None:
+    print('Download (POWER OUTAGE) file is ok.')
+else:
+    print('Download (POWER OUTAGE) file is NOT ok.')
+
+
+### Unzip downloaded file ###
+zip_power = zipfile.ZipFile(file_name_power)
+file_power = zip_power.extract(txt_name_power)
+print('Unzipped (POWER OUTAGE) file is "%s".' %file_power)
+zip_power.close()
+
+
+### Read the content of txt file ###
+txt_file_power = open(txt_name_power, 'r')
+lines_power = txt_file_power.readlines()
+
+line_power = []
+txt_power = []
+for line in lines_power[1:]:
+    line_adapted_power = line.strip()
+    line_power = line_adapted_power.split('#')
+    txt_power.append(line_power)
+txt_file_power.close()
+
+
+#### Connect database ###
+connect = sqlite3.connect('livelihood_v2.db')
+conn = connect.cursor()
+
+#### Insert date to table ###
+events_water = []
+events_road = []
+events_power = []
+groups_water = []
+groups_road = []
+groups_power = []
+coordinates_water = []
+coordinates_road = []
+coordinates_power = []
+
+# Content of water outage
+for event_water in json_water['result']['results']:
+    content_event = (
+        event_water['SW_No'], 
+        'water', 
+        event_water['SW_No'], 
+        '台北市', 
+        event_water['SW_Area'], 
+        event_water['SW_Area'], 
+        event_water['SW_Area'], 
+        event_water['FS_Date'], 
+        event_water['FC_Date'], 
+        event_water['Description'], 
+        event_water['Description'], 
+        event_water['Description'], 
+        'new', 
+        time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
+    events_water.append(content_event)
+
+    content_group = (content_event[0], )
+    groups_water.append(content_group)
+    
+    for coordinate_water in event_water['StopWaterSection_wgs84']['coordinates']:        
+        for point in coordinate_water:
+            content_coordinate = (
+                point[0], 
+                point[1], 
+                content_group[0])
+            coordinates_water.append(content_coordinate)
+
+conn.executemany("""INSERT INTO event 
+   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", events_water)
+conn.executemany("""INSERT INTO event_coord_group(event_id) 
+   VALUES (?)""", groups_water)
+conn.executemany("""INSERT INTO event_coordinate(
+   x_coordinate, 
+   y_coordinate, 
+   group_id) 
+   VALUES (?,?,?)""", coordinates_water)
+
+# Content of road construction
+for event_road in json_road['result']['results']:
+    content_event = (
+        '#'.join((event_road['AC_NO'], event_road['SNO'])), 
+        'road', 
+        event_road['AC_NO'], 
+        '台北市', 
+        event_road['C_NAME'], 
+        event_road['ADDR'], 
+        event_road['ADDR'], 
+        event_road['CB_DA'], 
+        event_road['CE_DA'], 
+        event_road['CO_TI'], 
+        event_road['CO_TI'], 
+        event_road['NPURP'], 
+        'new', 
+        time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
+    events_road.append(content_event)
+    
+    content_group = (content_event[0], )
+    groups_road.append(content_group)
+    
+    content_coordinate = (
+        event_road['X'], 
+        event_road['Y'], 
+        content_group[0])
+    coordinates_road.append(content_coordinate)
+
+conn.executemany("""INSERT INTO event 
+   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", events_road)
+conn.executemany("""INSERT INTO event_coord_group(event_id) 
+   VALUES (?)""", groups_road)
+conn.executemany("""INSERT INTO event_coordinate(
+   x_coordinate, 
+   y_coordinate, 
+   group_id) 
+   VALUES (?,?,?)""", coordinates_road)
+
+# Content of power outage
+for event_power in txt_power:
+    content_event = (
+        '#'.join((event_power[1], event_power[3], event_power[5])), 
+        'power', 
+        event_power[1], 
+        '台北市', 
+        event_power[5], 
+        event_power[5], 
+        event_power[5], 
+        event_power[3], 
+        event_power[4], 
+        event_power[3], 
+        event_power[4], 
+        event_power[2], 
+        'new', 
+        time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
+    events_power.append(content_event)
+    
+    content_group = (content_event[0], )
+    groups_power.append(content_group)
+    
+    content_coordinate = (
+        0.1, 
+        0.1, 
+        content_group[0])
+    coordinates_power.append(content_coordinate)
+
+conn.executemany("""INSERT INTO event 
+   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", events_power)
+   
+conn.executemany("""INSERT INTO event_coord_group(event_id) 
+   VALUES (?)""", groups_power)
+   
+conn.executemany("""INSERT INTO event_coordinate(
+   x_coordinate, 
+   y_coordinate, 
+   group_id) 
+   VALUES (?,?,?)""", coordinates_power)
+
+connect.commit()
+connect.close()
+

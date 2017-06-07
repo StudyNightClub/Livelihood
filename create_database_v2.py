@@ -18,8 +18,8 @@ conn.execute("""CREATE TABLE event(
     lane_alley_number TEXT , 
     start_date TEXT NOT NULL, 
     end_date TEXT NOT NULL, 
-    start_time TEXT NOT NULL, 
-    end_time TEXT NOT NULL, 
+    start_time TEXT, 
+    end_time TEXT, 
     description TEXT, 
     update_status TEXT NOT NULL, 
     update_time TEXT NOT NULL)""")
@@ -35,8 +35,8 @@ conn.execute("""CREATE TABLE event_coord_group(
 # Create coordinate table
 conn.execute("""CREATE TABLE event_coordinate(
     coordinate_id INTEGER PRIMARY KEY AUTOINCREMENT, 
-    x_coordinate REAL NOT NULL, 
-    y_coordinate REAL NOT NULL, 
+    x_coordinate REAL, 
+    y_coordinate REAL, 
     group_id INTEGER NOT NULL, 
     
     FOREIGN KEY(group_id) 

@@ -7,6 +7,11 @@ import urllib.parse
 import zipfile
 import sqlite3
 import time
+import uuid
+
+
+### Database name ###
+database_name = 'livelihood_v3.db'
 
 
 ### URL name ###
@@ -69,7 +74,7 @@ txt_file_power.close()
 
 
 #### Connect database ###
-connect = sqlite3.connect('livelihood_v2.db')
+connect = sqlite3.connect(database_name)
 conn = connect.cursor()
 
 #### Insert date to table ###
@@ -86,8 +91,8 @@ coordinates_power = []
 # Content of water outage
 for event_water in json_water['result']['results']:
     content_event = (
-        event_water['SW_No'], 
-        'water', 
+        (str(uuid.uuid1())[0:23]).replace('-', ''), 
+        'Water', 
         event_water['SW_No'], 
         '台北市', 
         event_water['SW_Area'], 
@@ -101,13 +106,16 @@ for event_water in json_water['result']['results']:
         'new', 
         time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
     events_water.append(content_event)
-
-    content_group = (content_event[0], )
+        
+    content_group = (
+        (str(uuid.uuid1())[0:23]).replace('-', ''), 
+        content_event[0])
     groups_water.append(content_group)
     
     for coordinate_water in event_water['StopWaterSection_wgs84']['coordinates']:        
         for point in coordinate_water:
             content_coordinate = (
+                (str(uuid.uuid1())[0:23]).replace('-', ''), 
                 point[0], 
                 point[1], 
                 content_group[0])
@@ -115,20 +123,23 @@ for event_water in json_water['result']['results']:
 
 conn.executemany("""INSERT INTO event 
    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", events_water)
-conn.executemany("""INSERT INTO event_coord_group(event_id) 
-   VALUES (?)""", groups_water)
+conn.executemany("""INSERT INTO event_coord_group(
+    group_id, 
+    event_id) 
+    VALUES (?,?)""", groups_water)
 conn.executemany("""INSERT INTO event_coordinate(
+   coordinate_id, 
    x_coordinate, 
    y_coordinate, 
    group_id) 
-   VALUES (?,?,?)""", coordinates_water)
+   VALUES (?,?,?,?)""", coordinates_water)
 
 # Content of road construction
 for event_road in json_road['result']['results']:
     content_event = (
+        (str(uuid.uuid1())[0:23]).replace('-', ''), 
+        'Road', 
         '#'.join((event_road['AC_NO'], event_road['SNO'])), 
-        'road', 
-        event_road['AC_NO'], 
         '台北市', 
         event_road['C_NAME'], 
         event_road['ADDR'], 
@@ -142,10 +153,13 @@ for event_road in json_road['result']['results']:
         time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
     events_road.append(content_event)
     
-    content_group = (content_event[0], )
+    content_group = (
+        (str(uuid.uuid1())[0:23]).replace('-', ''), 
+        content_event[0])
     groups_road.append(content_group)
     
     content_coordinate = (
+        (str(uuid.uuid1())[0:23]).replace('-', ''), 
         event_road['X'], 
         event_road['Y'], 
         content_group[0])
@@ -153,20 +167,35 @@ for event_road in json_road['result']['results']:
 
 conn.executemany("""INSERT INTO event 
    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", events_road)
-conn.executemany("""INSERT INTO event_coord_group(event_id) 
-   VALUES (?)""", groups_road)
+conn.executemany("""INSERT INTO event_coord_group(
+    group_id, 
+    event_id) 
+    VALUES (?,?)""", groups_road)
 conn.executemany("""INSERT INTO event_coordinate(
+   coordinate_id, 
    x_coordinate, 
    y_coordinate, 
    group_id) 
-   VALUES (?,?,?)""", coordinates_road)
+   VALUES (?,?,?,?)""", coordinates_road)
+
 
 # Content of power outage
 for event_power in txt_power:
+    # Convert Address to coordinate
+    address_name = event_power[5]
+    url_address = 'http://maps.googleapis.com/maps/api/geocode/json?address=' + urllib.parse.quote(address_name) + '&sensor=false&language=zh-tw'
+    web_request_address = requests.get(url_address)
+    if web_request_address.status_code != 200:
+        print('Web (ADDRESS) request is NOT ok. Request status code = %s.' 
+            %(web_request_address.status_code))
+    json_address = web_request_address.json()
+    
     content_event = (
-        '#'.join((event_power[1], event_power[3], event_power[5])), 
-        'power', 
-        event_power[1], 
+        (str(uuid.uuid1())[0:23]).replace('-', ''), 
+        'Power', 
+        '#'.join(
+            (event_power[1], 
+            (str(uuid.uuid1())[0:8]).replace('-', ''), )), 
         '台北市', 
         event_power[5], 
         event_power[5], 
@@ -177,29 +206,35 @@ for event_power in txt_power:
         event_power[4], 
         event_power[2], 
         'new', 
-        time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
+        time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))    
     events_power.append(content_event)
     
-    content_group = (content_event[0], )
+    content_group = (
+        (str(uuid.uuid1())[0:23]).replace('-', ''), 
+        content_event[0])
     groups_power.append(content_group)
     
     content_coordinate = (
-        0.1, 
-        0.1, 
+        (str(uuid.uuid1())[0:23]).replace('-', ''), 
+        float(json_address['results'][0]['geometry']['location']['lat']), 
+        float(json_address['results'][0]['geometry']['location']['lng']), 
         content_group[0])
     coordinates_power.append(content_coordinate)
 
 conn.executemany("""INSERT INTO event 
    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", events_power)
    
-conn.executemany("""INSERT INTO event_coord_group(event_id) 
-   VALUES (?)""", groups_power)
+conn.executemany("""INSERT INTO event_coord_group(
+    group_id, 
+    event_id) 
+    VALUES (?,?)""", groups_power)
    
 conn.executemany("""INSERT INTO event_coordinate(
+   coordinate_id, 
    x_coordinate, 
    y_coordinate, 
    group_id) 
-   VALUES (?,?,?)""", coordinates_power)
+   VALUES (?,?,?,?)""", coordinates_power)
 
 connect.commit()
 connect.close()

@@ -2,14 +2,14 @@
 
 ### Create Database
 
-Include types: water outage, road construction, power outage.
+Including types: water outage, road construction, power outage.
 
-    execute "create_database_v2.py" by python 3.x
+    execute "create_database.py" by python 3.x
 
 
-### Import Data (testing)
+### Import Data
 
-Notice: can't deal with the update situation yet, and some of data formats aren't correct because of testing.
+Notice: some of values of table event aren't correct because string parsing is still in progress.
 
-    execute "connect_data_v2.py" by python 3.x
+    execute "connect_data.py" by python 3.x
 

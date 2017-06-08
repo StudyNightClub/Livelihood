@@ -4,7 +4,7 @@
 
 # Create database
 import sqlite3
-conn = sqlite3.connect('livelihood_v2.db')
+conn = sqlite3.connect('livelihood_v3.db')
 
 
 # Create event table
@@ -26,7 +26,7 @@ conn.execute("""CREATE TABLE event(
 
 # Create group table
 conn.execute("""CREATE TABLE event_coord_group(
-    group_id INTEGER PRIMARY KEY AUTOINCREMENT, 
+    group_id TEXT NOT NULL PRIMARY KEY, 
     event_id TEXT NOT NULL, 
     
     FOREIGN KEY(event_id) 
@@ -34,10 +34,10 @@ conn.execute("""CREATE TABLE event_coord_group(
 
 # Create coordinate table
 conn.execute("""CREATE TABLE event_coordinate(
-    coordinate_id INTEGER PRIMARY KEY AUTOINCREMENT, 
+    coordinate_id TEXT NOT NULL PRIMARY KEY, 
     x_coordinate REAL, 
     y_coordinate REAL, 
-    group_id INTEGER NOT NULL, 
+    group_id TEXT NOT NULL, 
     
     FOREIGN KEY(group_id) 
         REFERENCES event_coord_group(group_id))""")

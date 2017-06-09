@@ -93,6 +93,7 @@ coordinates_power = []
 # Content of water outage
 for event_water in json_water['result']['results']:
 
+    timeinfo = datetime_parser.parse_water_road_time(event_water['Description'])
     content_event = (
         (str(uuid.uuid1())[0:23]).replace('-', ''), 
         'Water', 
@@ -103,8 +104,8 @@ for event_water in json_water['result']['results']:
         event_water['SW_Area'], 
         datetime_parser.roc_to_common_date(event_water['FS_Date']),
         datetime_parser.roc_to_common_date(event_water['FC_Date']),
-        event_water['Description'], 
-        event_water['Description'], 
+        timeinfo[0],
+        timeinfo[1],
         event_water['Description'], 
         'new', 
         time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
@@ -139,6 +140,8 @@ conn.executemany("""INSERT INTO event_coordinate(
 
 # Content of road construction
 for event_road in json_road['result']['results']:
+
+    timeinfo = datetime_parser.parse_water_road_time(event_road['CO_TI'])
     content_event = (
         (str(uuid.uuid1())[0:23]).replace('-', ''), 
         'Road', 
@@ -149,8 +152,8 @@ for event_road in json_road['result']['results']:
         event_road['ADDR'], 
         datetime_parser.roc_to_common_date(event_road['CB_DA']),
         datetime_parser.roc_to_common_date(event_road['CE_DA']),
-        event_road['CO_TI'], 
-        event_road['CO_TI'], 
+        timeinfo[0],
+        timeinfo[1],
         event_road['NPURP'], 
         'new', 
         time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))

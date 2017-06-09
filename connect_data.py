@@ -192,7 +192,8 @@ for event_power in txt_power:
         print('Web (ADDRESS) request is NOT ok. Request status code = %s.' 
             %(web_request_address.status_code))
     json_address = web_request_address.json()
-    
+    timeinfo = datetime_parser.parse_power_date_time(event_power[3])
+
     content_event = (
         (str(uuid.uuid1())[0:23]).replace('-', ''), 
         'Power', 
@@ -200,14 +201,14 @@ for event_power in txt_power:
             (event_power[1], 
             (str(uuid.uuid1())[0:8]).replace('-', ''), )), 
         '台北市', 
-        event_power[5], 
-        event_power[5], 
-        event_power[5], 
-        event_power[3], 
-        event_power[4], 
-        event_power[3], 
-        event_power[4], 
-        event_power[2], 
+        event_power[5],
+        event_power[5],
+        event_power[5],
+        timeinfo[0],
+        timeinfo[0],
+        timeinfo[1],
+        timeinfo[2],
+        event_power[2],
         'new', 
         time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))    
     events_power.append(content_event)

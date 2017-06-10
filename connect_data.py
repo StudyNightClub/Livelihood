@@ -204,6 +204,7 @@ for event_power in txt_power:
     # Convert Address to coordinate
     coordinate_power = convert.address_to_coordinate(event_power[5])
     
+    # First working period
     timeinfo_first_period = datetime_parser.parse_power_date_time(event_power[3])
     content_event_first_period = (
         (str(uuid.uuid1())[0:23]).replace('-', ''), 
@@ -222,6 +223,7 @@ for event_power in txt_power:
         time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
     events_power.append(content_event_first_period)
     
+    # Second working period
     if event_power[4] != '無':
         timeinfo_second_period = datetime_parser.parse_power_date_time(event_power[4])
         content_event_second_period = (

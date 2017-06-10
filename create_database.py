@@ -2,9 +2,14 @@
 # coding=utf-8
 
 
-# Create database
 import sqlite3
-conn = sqlite3.connect('livelihood_v4.db')
+
+
+database_name = 'livelihood_v5.db'
+
+
+# Create database
+conn = sqlite3.connect(database_name)
 
 
 # Create event table

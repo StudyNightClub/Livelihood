@@ -13,7 +13,7 @@ import convert
 import datetime_parser
 
 ### Database name ###
-database_name = 'livelihood_v4.db'
+database_name = 'livelihood_v5.db'
 
 
 ### URL name ###
@@ -22,7 +22,8 @@ url_water = 'http://data.taipei/opendata/datalist/apiAccess?scope=resourceAquire
 url_road = 'http://data.taipei/opendata/datalist/apiAccess?scope=resourceAquire&rid=201d8ae8-dffc-4d17-ae1f-e58d8a95b162'
 
 file_name_power = '台灣電力公司_計畫性工作停電資料.zip'
-url_power = 'http://data.taipower.com.tw/opendata/apply/file/d077004/' + urllib.parse.quote(file_name_power)
+url_power = ('http://data.taipower.com.tw/opendata/apply/file/d077004/' 
+    + urllib.parse.quote(file_name_power))
 txt_name_power = 'wkotgnews/102.txt'
 
 
@@ -91,13 +92,17 @@ coordinates_road = []
 coordinates_power = []
 
 
-# Content of water outage
+# Content of WATER OUTAGE
+conn.execute("""UPDATE event SET update_status = 'old' 
+    WHERE event_type = 'water' AND update_status = 'new'""")
+
 for event_water in json_water['result']['results']:
 
     timeinfo = datetime_parser.parse_water_road_time(event_water['Description'])
+    
     content_event = (
         (str(uuid.uuid1())[0:23]).replace('-', ''), 
-        'Water', 
+        'water', 
         event_water['SW_No'], 
         '台北市', 
         event_water['SW_Area'], 
@@ -139,13 +144,16 @@ conn.executemany("""INSERT INTO event_coordinate(
    group_id) 
    VALUES (?,?,?,?)""", coordinates_water)
 
-# Content of road construction
+# Content of ROAD CONSTRUCTION
+conn.execute("""UPDATE event SET update_status = 'old' 
+    WHERE event_type = 'road' AND update_status = 'new'""")
 for event_road in json_road['result']['results']:
 
     timeinfo = datetime_parser.parse_water_road_time(event_road['CO_TI'])
+    
     content_event = (
         (str(uuid.uuid1())[0:23]).replace('-', ''), 
-        'Road', 
+        'road', 
         '#'.join((event_road['AC_NO'], event_road['SNO'])), 
         '台北市', 
         event_road['C_NAME'], 
@@ -167,6 +175,7 @@ for event_road in json_road['result']['results']:
     
     # Convert TWD97 to WGS84
     latitude_road, longitude_road = convert.twd97_to_wgs84(float(event_road['X']), float(event_road['Y']))
+    
     content_coordinate = (
         (str(uuid.uuid1())[0:23]).replace('-', ''), 
         latitude_road, 
@@ -187,29 +196,50 @@ conn.executemany("""INSERT INTO event_coordinate(
    group_id) 
    VALUES (?,?,?,?)""", coordinates_road)
 
-
-# Content of power outage
+# Content of POWER OUTAGE
+conn.execute("""UPDATE event SET update_status = 'old' 
+    WHERE event_type = 'power' AND update_status = 'new'""")
 for event_power in txt_power:
+    
     # Convert Address to coordinate
     coordinate_power = convert.address_to_coordinate(event_power[5])
-    timeinfo = datetime_parser.parse_power_date_time(event_power[3])
-
-    content_event = (
+    
+    timeinfo_first_period = datetime_parser.parse_power_date_time(event_power[3])
+    content_event_first_period = (
         (str(uuid.uuid1())[0:23]).replace('-', ''), 
-        'Power', 
+        'power', 
         event_power[1], 
         '台北市', 
         event_power[5],
         event_power[5],
         event_power[5],
-        timeinfo[0],
-        timeinfo[0],
-        timeinfo[1],
-        timeinfo[2],
+        timeinfo_first_period[0],
+        timeinfo_first_period[0],
+        timeinfo_first_period[1],
+        timeinfo_first_period[2],
         event_power[2],
         'new', 
-        time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))    
-    events_power.append(content_event)
+        time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
+    events_power.append(content_event_first_period)
+    
+    if event_power[4] != '無':
+        timeinfo_second_period = datetime_parser.parse_power_date_time(event_power[4])
+        content_event_second_period = (
+            (str(uuid.uuid1())[0:23]).replace('-', ''), 
+            'Power', 
+            event_power[1], 
+            '台北市', 
+            event_power[5],
+            event_power[5],
+            event_power[5],
+            timeinfo_second_period[0],
+            timeinfo_second_period[0],
+            timeinfo_second_period[1],
+            timeinfo_second_period[2],
+            event_power[2],
+            'new', 
+            time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
+        events_power.append(content_event_second_period)
     
     content_group = (
         (str(uuid.uuid1())[0:23]).replace('-', ''), 

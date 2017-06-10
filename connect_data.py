@@ -8,10 +8,11 @@ import zipfile
 import sqlite3
 import time
 import uuid
+import convert
 
 
 ### Database name ###
-database_name = 'livelihood_v3.db'
+database_name = 'livelihood_v4.db'
 
 
 ### URL name ###
@@ -113,11 +114,11 @@ for event_water in json_water['result']['results']:
     groups_water.append(content_group)
     
     for coordinate_water in event_water['StopWaterSection_wgs84']['coordinates']:        
-        for point in coordinate_water:
+        for point in coordinate_water:            
             content_coordinate = (
                 (str(uuid.uuid1())[0:23]).replace('-', ''), 
-                point[0], 
                 point[1], 
+                point[0], 
                 content_group[0])
             coordinates_water.append(content_coordinate)
 
@@ -129,8 +130,8 @@ conn.executemany("""INSERT INTO event_coord_group(
     VALUES (?,?)""", groups_water)
 conn.executemany("""INSERT INTO event_coordinate(
    coordinate_id, 
-   x_coordinate, 
-   y_coordinate, 
+   latitude, 
+   longitude, 
    group_id) 
    VALUES (?,?,?,?)""", coordinates_water)
 
@@ -158,10 +159,12 @@ for event_road in json_road['result']['results']:
         content_event[0])
     groups_road.append(content_group)
     
+    # Convert TWD97 to WGS84
+    latitude_road, longitude_road = convert.twd97_to_wgs84(float(event_road['X']), float(event_road['Y']))
     content_coordinate = (
         (str(uuid.uuid1())[0:23]).replace('-', ''), 
-        event_road['X'], 
-        event_road['Y'], 
+        latitude_road, 
+        longitude_road, 
         content_group[0])
     coordinates_road.append(content_coordinate)
 
@@ -173,8 +176,8 @@ conn.executemany("""INSERT INTO event_coord_group(
     VALUES (?,?)""", groups_road)
 conn.executemany("""INSERT INTO event_coordinate(
    coordinate_id, 
-   x_coordinate, 
-   y_coordinate, 
+   latitude, 
+   longitude, 
    group_id) 
    VALUES (?,?,?,?)""", coordinates_road)
 
@@ -182,20 +185,12 @@ conn.executemany("""INSERT INTO event_coordinate(
 # Content of power outage
 for event_power in txt_power:
     # Convert Address to coordinate
-    address_name = event_power[5]
-    url_address = 'http://maps.googleapis.com/maps/api/geocode/json?address=' + urllib.parse.quote(address_name) + '&sensor=false&language=zh-tw'
-    web_request_address = requests.get(url_address)
-    if web_request_address.status_code != 200:
-        print('Web (ADDRESS) request is NOT ok. Request status code = %s.' 
-            %(web_request_address.status_code))
-    json_address = web_request_address.json()
-    
+    coordinate_power = convert.address_to_coordinate(event_power[5])
+        
     content_event = (
         (str(uuid.uuid1())[0:23]).replace('-', ''), 
         'Power', 
-        '#'.join(
-            (event_power[1], 
-            (str(uuid.uuid1())[0:8]).replace('-', ''), )), 
+        event_power[1], 
         '台北市', 
         event_power[5], 
         event_power[5], 
@@ -216,8 +211,8 @@ for event_power in txt_power:
     
     content_coordinate = (
         (str(uuid.uuid1())[0:23]).replace('-', ''), 
-        float(json_address['results'][0]['geometry']['location']['lat']), 
-        float(json_address['results'][0]['geometry']['location']['lng']), 
+        float(coordinate_power[0]), 
+        float(coordinate_power[1]), 
         content_group[0])
     coordinates_power.append(content_coordinate)
 
@@ -231,8 +226,8 @@ conn.executemany("""INSERT INTO event_coord_group(
    
 conn.executemany("""INSERT INTO event_coordinate(
    coordinate_id, 
-   x_coordinate, 
-   y_coordinate, 
+   latitude, 
+   longitude, 
    group_id) 
    VALUES (?,?,?,?)""", coordinates_power)
 

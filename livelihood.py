@@ -116,11 +116,10 @@ class WaterImporter(DataImporter):
             )
             self.events.append(event_model)
 
-            group_model = (get_uuid(), event_model[0])
-            self.groups.append(group_model)
-
-            for coordinate_water in event_water['StopWaterSection_wgs84']['coordinates']:
-                for coordinate in coordinate_water:
+            for coordinate_group in event_water['StopWaterSection_wgs84']['coordinates']:
+                group_model = (get_uuid(), event_model[0])
+                self.groups.append(group_model)
+                for coordinate in coordinate_group:
                     coordinate_model = (get_uuid(), coordinate[1],
                         coordinate[0], group_model[0])
                     self.coordinates.append(coordinate_model)

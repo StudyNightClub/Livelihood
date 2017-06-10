@@ -4,12 +4,12 @@
 
 Including types: water outage, road construction, power outage.
 
-    execute "create_database.py" by python 3.x
+    $ python3 create_database.py
 
 
 ### Import Data
 
 Notice: some of values of table event aren't correct because string parsing is still in progress.
 
-    execute "connect_data.py" by python 3.x
+    $ python3 connect_data.py
 

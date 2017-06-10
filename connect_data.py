@@ -10,6 +10,7 @@ import time
 import uuid
 import convert
 
+import datetime_parser
 
 ### Database name ###
 database_name = 'livelihood_v4.db'
@@ -89,8 +90,11 @@ coordinates_water = []
 coordinates_road = []
 coordinates_power = []
 
+
 # Content of water outage
 for event_water in json_water['result']['results']:
+
+    timeinfo = datetime_parser.parse_water_road_time(event_water['Description'])
     content_event = (
         (str(uuid.uuid1())[0:23]).replace('-', ''), 
         'Water', 
@@ -99,10 +103,10 @@ for event_water in json_water['result']['results']:
         event_water['SW_Area'], 
         event_water['SW_Area'], 
         event_water['SW_Area'], 
-        event_water['FS_Date'], 
-        event_water['FC_Date'], 
-        event_water['Description'], 
-        event_water['Description'], 
+        datetime_parser.roc_to_common_date(event_water['FS_Date']),
+        datetime_parser.roc_to_common_date(event_water['FC_Date']),
+        timeinfo[0],
+        timeinfo[1],
         event_water['Description'], 
         'new', 
         time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
@@ -137,6 +141,8 @@ conn.executemany("""INSERT INTO event_coordinate(
 
 # Content of road construction
 for event_road in json_road['result']['results']:
+
+    timeinfo = datetime_parser.parse_water_road_time(event_road['CO_TI'])
     content_event = (
         (str(uuid.uuid1())[0:23]).replace('-', ''), 
         'Road', 
@@ -145,10 +151,10 @@ for event_road in json_road['result']['results']:
         event_road['C_NAME'], 
         event_road['ADDR'], 
         event_road['ADDR'], 
-        event_road['CB_DA'], 
-        event_road['CE_DA'], 
-        event_road['CO_TI'], 
-        event_road['CO_TI'], 
+        datetime_parser.roc_to_common_date(event_road['CB_DA']),
+        datetime_parser.roc_to_common_date(event_road['CE_DA']),
+        timeinfo[0],
+        timeinfo[1],
         event_road['NPURP'], 
         'new', 
         time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
@@ -186,20 +192,21 @@ conn.executemany("""INSERT INTO event_coordinate(
 for event_power in txt_power:
     # Convert Address to coordinate
     coordinate_power = convert.address_to_coordinate(event_power[5])
-        
+    timeinfo = datetime_parser.parse_power_date_time(event_power[3])
+
     content_event = (
         (str(uuid.uuid1())[0:23]).replace('-', ''), 
         'Power', 
         event_power[1], 
         '台北市', 
-        event_power[5], 
-        event_power[5], 
-        event_power[5], 
-        event_power[3], 
-        event_power[4], 
-        event_power[3], 
-        event_power[4], 
-        event_power[2], 
+        event_power[5],
+        event_power[5],
+        event_power[5],
+        timeinfo[0],
+        timeinfo[0],
+        timeinfo[1],
+        timeinfo[2],
+        event_power[2],
         'new', 
         time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))    
     events_power.append(content_event)

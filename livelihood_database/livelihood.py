@@ -261,10 +261,10 @@ def import_all(database=_DATABASE):
     PowerImporter(database).import_data()
 
 ### Create livelihood database ###
-def create_database(database_filename=_DATABASE):
+def create_database(database=_DATABASE):
 
     # Connect database
-    connect = sqlite3.connect(database_filename)
+    connect = sqlite3.connect(database)
     conn = connect.cursor()
 
     # Create event table

@@ -1,15 +1,20 @@
-# livelihood-database
+# livelihood-database v1.0.0
 
-### Create Database
+Create and populate livelihood DB (sqlite).
 
-Including types: water outage, road construction, power outage.
+## Installation
 
-    $ python3 create_database.py
+    $ pip3 install git+https://github.com/StudyNightClub/livelihood-database.git
 
+## Usage
 
-### Import Data
+    from livelihood_database import livelihood
 
-Notice: some of values of table event aren't correct because string parsing is still in progress.
+    # Create DB
+    livelihood.create_database(database=<filename>)
 
-    $ python3 connect_data.py
+    # Populate data
+    livelihood.import_all(database=<filename>)
 
+If the provided `<filename>` already contains target tables, `create_database()`
+will fail. The default database file name is `livelihood.db`.

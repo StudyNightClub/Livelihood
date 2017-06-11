@@ -1,4 +1,4 @@
-# livelihood-database v1.0.0
+# livelihood-database v2.0.0
 
 Create and populate livelihood DB (sqlite).
 

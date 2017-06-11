@@ -10,4 +10,7 @@ setup(name='livelihood_database',
       author_email='',
       license='MIT',
       packages=['livelihood_database'],
+      install_requires=[
+          'requests==2.17.3',
+      ],
       zip_safe=False)

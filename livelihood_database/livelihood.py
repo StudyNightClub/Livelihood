@@ -4,27 +4,37 @@ from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 import urllib.parse
 import shutil
-import sqlite3
 import time
 import uuid
 import zipfile
 import requests
 
-from livelihood_database import map_converter
-from livelihood_database import datetime_parser
-from livelihood_database import location_parser
+import os
+import psycopg2
 
-_DATABASE = 'livelihood.db'
+import map_converter
+import datetime_parser
+import location_parser
+
+
+ldb_name = os.environ['LDB_DATABASE']
+ldb_user = os.environ['LDB_USER']
+ldb_pass = os.environ['LDB_PASS']
+ldb_host = os.environ['LDB_HOST']
+ldb_port = os.environ['LDB_PORT']
+
+_DATABASE = ldb_name
 
 Event = namedtuple('Event', ['event_id', 'event_type', 'gov_serial_number',
     'city', 'district', 'road', 'lane_alley_number', 'start_date', 'end_date',
     'start_time', 'end_time', 'description', 'update_status', 'update_time'])
 
+
 class DataImporter(object):
     __metaclass__ = ABCMeta
 
-    def __init__(self, database):
-        self.connect = sqlite3.connect(database)
+    def __init__(self):
+        self.connect = psycopg2.connect(dbname=ldb_name, user=ldb_user, password=ldb_pass, host=ldb_host, port=ldb_port)
         self.events = []
         self.groups = []
         self.coordinates = []
@@ -49,37 +59,38 @@ class DataImporter(object):
         self._mask_old_entries()
         self.generate_events(source)
         self._insert_entries()
-        self.connect.commit()
+        self.connect.commit()        
         self.connect.close()
 
     def _mask_old_entries(self):
         cursor = self.connect.cursor()
         cursor.execute("""UPDATE event SET update_status = 'old'
-            WHERE event_type = ? AND update_status = 'new'""",
-            (self.get_event_type(), ))
+            WHERE event_type = %s AND update_status = 'new'""",
+            (self.get_event_type(), ))        
+        cursor.close()
 
     def _insert_entries(self):
         cursor = self.connect.cursor()
         cursor.executemany("""INSERT INTO event
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", self.events)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""", self.events)
         cursor.executemany("""INSERT INTO event_coord_group(
             group_id,
             event_id)
-            VALUES (?,?)""", self.groups)
+            VALUES (%s,%s)""", self.groups)
         cursor.executemany("""INSERT INTO event_coordinate(
             coordinate_id,
             latitude,
             longitude,
             group_id)
-            VALUES (?,?,?,?)""", self.coordinates)
-
+            VALUES (%s,%s,%s,%s)""", self.coordinates)        
+        cursor.close()
 
 class WaterImporter(DataImporter):
 
     _WATER_SOURCE = 'http://data.taipei/opendata/datalist/apiAccess?scope=resourceAquire&rid=a242ee9b-b954-4ae9-9827-2344c5dfeaea'
 
-    def __init__(self, database=_DATABASE):
-        super().__init__(database)
+    def __init__(self):
+        super().__init__()
 
     def get_event_type(self):
         return 'water'
@@ -141,8 +152,8 @@ class RoadImporter(DataImporter):
 
     _ROAD_SOURCE = 'http://data.taipei/opendata/datalist/apiAccess?scope=resourceAquire&rid=201d8ae8-dffc-4d17-ae1f-e58d8a95b162'
 
-    def __init__(self, database=_DATABASE):
-        super().__init__(database)
+    def __init__(self):
+        super().__init__()
 
     def get_event_type(self):
         return 'road'
@@ -202,8 +213,8 @@ class PowerImporter(DataImporter):
         + urllib.parse.quote(_ZIP_FILE))
     _TEXT_FILE = 'wkotgnews/102.txt'
 
-    def __init__(self, database=_DATABASE):
-        super().__init__(database)
+    def __init__(self):
+        super().__init__()
 
     def get_event_type(self):
         return 'power'
@@ -274,16 +285,16 @@ class PowerImporter(DataImporter):
 
 
 ### Import all types of livelihood data ###
-def import_all(database=_DATABASE):
-    WaterImporter(database).import_data()
-    RoadImporter(database).import_data()
-    PowerImporter(database).import_data()
+def import_all():
+    WaterImporter().import_data()
+    RoadImporter().import_data()
+    PowerImporter().import_data()
 
 ### Create livelihood database ###
-def create_database(database=_DATABASE):
+def create_database():
 
     # Connect database
-    connect = sqlite3.connect(database)
+    connect = psycopg2.connect(dbname=ldb_name, user=ldb_user, password=ldb_pass, host=ldb_host, port=ldb_port)
     conn = connect.cursor()
 
     # Create event table
@@ -323,6 +334,7 @@ def create_database(database=_DATABASE):
 
     # Save (commit) the changes and close the connection
     connect.commit()
+    conn.close()
     connect.close()
 
 

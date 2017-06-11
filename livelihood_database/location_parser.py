@@ -34,7 +34,7 @@ def parse_water_address(address_name, field_name):
         
         sub_address = re.search(regex, address_name)
         
-        print(sub_address.groups())
+        #print(sub_address.groups())
         
         return sub_address.groups()
     
@@ -43,7 +43,7 @@ def parse_water_address(address_name, field_name):
         
         sub_address = re.search(regex, address_name)
         
-        print(sub_address.groups())
+        #print(sub_address.groups())
         
         return sub_address.groups()
     

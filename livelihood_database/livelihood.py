@@ -10,8 +10,8 @@ import uuid
 import zipfile
 import requests
 
-import convert
-import datetime_parser
+from livelihood_database import convert
+from livelihood_database import datetime_parser
 
 _DATABASE = 'livelihood.db'
 

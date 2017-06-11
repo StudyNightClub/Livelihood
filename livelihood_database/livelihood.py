@@ -10,8 +10,9 @@ import uuid
 import zipfile
 import requests
 
-from livelihood_database import convert
+from livelihood_database import map_converter
 from livelihood_database import datetime_parser
+from livelihood_database import location_parser
 
 _DATABASE = 'livelihood.db'
 
@@ -97,26 +98,37 @@ class WaterImporter(DataImporter):
         for event_water in source['result']['results']:
 
             timeinfo = datetime_parser.parse_water_road_time(event_water['Description'])
-
-            event_model = Event(
-                event_id=get_uuid(),
-                event_type=self.get_event_type(),
-                gov_serial_number=event_water['SW_No'],
-                city='台北市',
-                district=event_water['SW_Area'],
-                road=event_water['SW_Area'],
-                lane_alley_number=event_water['SW_Area'],
-                start_date=datetime_parser.roc_to_common_date(event_water['FS_Date']),
-                end_date=datetime_parser.roc_to_common_date(event_water['FC_Date']),
-                start_time=timeinfo[0],
-                end_time=timeinfo[1],
-                description=event_water['Description'],
-                update_status='new',
-                update_time=get_current_time()
-            )
-            self.events.append(event_model)
+            
+            description_info = location_parser.parse_water_address(event_water['Description'], 'description')
 
             for coordinate_group in event_water['StopWaterSection_wgs84']['coordinates']:
+                
+                latitude = coordinate_group[0][1]
+                longitude = coordinate_group[0][0]
+                
+                # Convert coordinate to address
+                address = map_converter.convert_coordinate_to_address(latitude, longitude)
+                
+                location_info = location_parser.parse_water_address(address, 'location')
+                
+                event_model = Event(
+                    event_id=get_uuid(),
+                    event_type=self.get_event_type(),
+                    gov_serial_number=event_water['SW_No'],
+                    city=location_info[0],
+                    district=location_info[1],
+                    road=location_info[2],
+                    lane_alley_number=location_info[3],
+                    start_date=datetime_parser.roc_to_common_date(event_water['FS_Date']),
+                    end_date=datetime_parser.roc_to_common_date(event_water['FC_Date']),
+                    start_time=timeinfo[0],
+                    end_time=timeinfo[1],
+                    description=description_info[0],
+                    update_status='new',
+                    update_time=get_current_time()
+                )
+                self.events.append(event_model)
+            
                 group_model = (get_uuid(), event_model[0])
                 self.groups.append(group_model)
                 for coordinate in coordinate_group:
@@ -149,14 +161,22 @@ class RoadImporter(DataImporter):
         for event in source['result']['results']:
             timeinfo = datetime_parser.parse_water_road_time(event['CO_TI'])
 
+            # Convert TWD97 to WGS84
+            latitude, longitude = map_converter.twd97_to_wgs84(float(event['X']), float(event['Y']))
+            
+            # Convert coordinate to address
+            address = map_converter.convert_coordinate_to_address(latitude, longitude)
+            
+            location_info = location_parser.parse_road_address(address)
+            
             event_model = Event(
                 event_id=get_uuid(),
                 event_type=self.get_event_type(),
                 gov_serial_number='#'.join((event['AC_NO'], event['SNO'])),
-                city='台北市',
-                district=event['C_NAME'],
-                road=event['ADDR'],
-                lane_alley_number=event['ADDR'],
+                city=location_info[0],
+                district=location_info[1],
+                road=location_info[2],
+                lane_alley_number=location_info[3],
                 start_date=datetime_parser.roc_to_common_date(event['CB_DA']),
                 end_date=datetime_parser.roc_to_common_date(event['CE_DA']),
                 start_time=timeinfo[0],
@@ -170,10 +190,7 @@ class RoadImporter(DataImporter):
             group_model = (get_uuid(), event_model[0])
             self.groups.append(group_model)
 
-            # Convert TWD97 to WGS84
-            latitude_road, longitude_road = convert.twd97_to_wgs84(float(event['X']), float(event['Y']))
-
-            coordinate_model = (get_uuid(), latitude_road, longitude_road,
+            coordinate_model = (get_uuid(), latitude, longitude,
                 group_model[0])
             self.coordinates.append(coordinate_model)
 
@@ -215,27 +232,29 @@ class PowerImporter(DataImporter):
     def generate_events(self, source):
         # arrange data and insert to table
         for event in source:
-            # Convert Address to coordinate
-            coordinate = convert.address_to_coordinate(event[5])
+            # Convert address to coordinate
+            coordinate = map_converter.convert_address_to_coordinate(event[5])
 
+            location_info = location_parser.parse_power_address(event[5])
+            
             # First working period
             timeinfo = datetime_parser.parse_power_date_time(event[3])
-            self._get_single_event(event, timeinfo, coordinate)
-
+            self._get_single_event(event, location_info, timeinfo, coordinate)
+            
             # Second working period
             if event[4] and event[4] != '無':
                 timeinfo = datetime_parser.parse_power_date_time(event[4])
-                self._get_single_event(event, timeinfo, coordinate)
+                self._get_single_event(event, location_info, timeinfo, coordinate)
 
-    def _get_single_event(self, line, timeinfo, coordinate):
+    def _get_single_event(self, line, location_info, timeinfo, coordinate):
         event_model = Event(
             event_id=get_uuid(),
             event_type=self.get_event_type(),
             gov_serial_number=line[1],
-            city='台北市',
-            district=line[5],
-            road=line[5],
-            lane_alley_number=line[5],
+            city='台'+str(location_info[0]),
+            district=location_info[1],
+            road=location_info[2],
+            lane_alley_number=location_info[3],
             start_date=timeinfo[0],
             end_date=timeinfo[0],
             start_time=timeinfo[1],
@@ -313,3 +332,4 @@ def get_current_time():
 
 def get_uuid():
     return str(uuid.uuid4())
+

@@ -8,7 +8,7 @@ Create and populate livelihood DB (psycopg).
 
 ## Run
 
-    For development, you can create the database and populate all data to the livelihood DB server based on setting of the environment variables.
+For development, you can create the database and populate all data to the livelihood DB server based on setting of the environment variables.
 
     $ export LDB_DATABASE=<server_administrator>
     $ export LDB_USER=<server_administrator>
@@ -16,7 +16,7 @@ Create and populate livelihood DB (psycopg).
     $ export LDB_HOST=<server_administrator>
     $ export LDB_PORT=<server_administrator>
     
-    If any of the environment variable isn't set, runtime error will happen.
+If any of the environment variable isn't set, runtime error will happen.
     
 ## Usage
 

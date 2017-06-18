@@ -1,6 +1,6 @@
 # livelihood-database v4.0.0
 
-Create and populate livelihood DB (psycopg).
+Create and populate livelihood DB.
 
 ## Installation
 

@@ -107,3 +107,5 @@ ENV/
 wkotgnews
 *.zip
 *.db
+setup_env.sh
+test.py

@@ -52,7 +52,9 @@ class DataImporter(object):
         self.session.close()
 
     def _mask_old_entries(self):
-        for e in self.session.query(Event).filter(Event.update_status == 'new'):
+        for e in self.session.query(Event)\
+                     .filter(Event.update_status == 'new')\
+                     .filter(Event.type == self.get_event_type()):
             e.update_status = 'old'
 
     def _insert_entries(self):

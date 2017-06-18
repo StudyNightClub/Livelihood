@@ -1,29 +1,29 @@
-# livelihood-database v3.0.0
+# livelihood-database v4.0.0
 
 Create and populate livelihood DB (psycopg).
 
 ## Installation
 
-    $ pip3 install git+https://github.com/StudyNightClub/livelihood-database.git
+    $ pip install git+https://github.com/StudyNightClub/livelihood-database.git
 
-## Run
-
-For development, you can create the database and populate all data to the livelihood DB server based on setting of the environment variables.
-
-    $ export LDB_DATABASE=<server_administrator>
-    $ export LDB_USER=<server_administrator>
-    $ export ULDB_PASS=<server_administrator>
-    $ export LDB_HOST=<server_administrator>
-    $ export LDB_PORT=<server_administrator>
-    
-If any of the environment variable isn't set, runtime error will happen.
-    
 ## Usage
 
-    # Create DB
-    livelihood.create_database()
+In shell:
+
+    # Setup DB URL (e.g., sqlite:///livelihood.db)
+    $ export LDB_URL=<database_url>
+
+Since 4.0, livelihood_database uses sqlalchemy to handle database actions, so
+multiple DB types are supported. Specify your DB type in the URL schema.
+For detailed documentation, check
+[here](http://docs.sqlalchemy.org/en/latest/index.html).
+
+In python:
+
+    from livelihood_database import livelihood
+
+    # Create DB tables (or do nothing if the tables already exist.)
+    livelihood.create_tables()
 
     # Populate data
     livelihood.import_all()
-
-If the provided `<filename_set>` already contains target tables, `create_database()` will fail. Please contact the server administrator.

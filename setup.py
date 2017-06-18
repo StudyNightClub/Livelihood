@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='livelihood_database',
-      version='3.0.0',
+      version='4.0.0',
       description='Create and import livelihood database.',
       url='https://github.com/StudyNightClub/livelihood-database',
       author='Lucas Wang',
@@ -11,6 +11,7 @@ setup(name='livelihood_database',
       license='MIT',
       packages=['livelihood_database'],
       install_requires=[
-          'requests==2.17.3',
+          'requests>=2.17.3',
+          'sqlalchemy>=1.1.10',
       ],
       zip_safe=False)

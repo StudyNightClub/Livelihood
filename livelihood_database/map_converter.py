@@ -2,59 +2,63 @@
 
 
 # API name: Convert address to coordinate
-# example: 
-#   import map_converter  
+# example:
+#   import map_converter
 #   coord = map_converter.convert_address_to_coordinate('台北市大安區羅斯福路四段1號')
 #   print(coord)
 
-import requests
+import os
 import urllib.parse
+import requests
 
+KEY = os.environ['GOOGLE_GEO_KEY']
 
 def convert_address_to_coordinate(address_name):
 
-    url_address = 'http://maps.googleapis.com/maps/api/geocode/json?address=' + urllib.parse.quote(address_name) + '&sensor=false&language=zh-tw'
-    
+    url_address = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + urllib.parse.quote(address_name) + '&sensor=false&language=zh-tw&key=' + KEY
+
     web_request_coordinate = requests.get(url_address)
-    
+
     if web_request_coordinate.status_code != 200:
-        print('Web (ADDRESS TO COORDINATE) request is NOT ok. Request status code = %s.' 
+        print('Web (ADDRESS TO COORDINATE) request is NOT ok. Request status code = %s.'
             %(web_request_coordinate.status_code))
-    
+
     json_coordinate = web_request_coordinate.json()
-    
+
     latitude = json_coordinate['results'][0]['geometry']['location']['lat']
     longitude = json_coordinate['results'][0]['geometry']['location']['lng']
-    
+
     return (latitude, longitude)
 
 
 # API name: Convert coordinate to address
-# example: 
-#   import map_converter  
+# example:
+#   import map_converter
 #   addr = map_converter.convert_coordinate_to_address(25.017153, 121.533904)
 #   print(addr)
 
 def convert_coordinate_to_address(latitude, longitude):
 
-    url_coordinate = 'http://maps.googleapis.com/maps/api/geocode/json?latlng=' + str(latitude) + ',' + str(longitude) + '&sensor=false&language=zh-tw'
-    
+    url_coordinate = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=' + str(latitude) + ',' + str(longitude) + '&sensor=false&language=zh-tw&key=' + KEY
+
     web_request_address = requests.get(url_coordinate)
-    
+
     if web_request_address.status_code != 200:
-        print('Web (COORDINATE TO ADDRESS) request is NOT ok. Request status code = %s.' 
+        print('Web (COORDINATE TO ADDRESS) request is NOT ok. Request status code = %s.'
             %(web_request_address.status_code))
-    
+
     json_address = web_request_address.json()
-    
-    address_name = json_address['results'][0]['formatted_address']
-    
-    return address_name
+
+    if json_address['results']:
+        return json_address['results'][0]['formatted_address']
+    else:
+        print(json_address)
+        return None
 
 
 # API name: Convert TWD97 to WGS84 (latitude and longitude)
-# example: 
-#   import map_converter  
+# example:
+#   import map_converter
 #   coord = map_converter.twd97_to_wgs84(298978.8217, 2774899.7146)
 #   print(coord)
 

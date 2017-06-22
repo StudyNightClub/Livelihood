@@ -88,8 +88,6 @@ class WaterImporter(DataImporter):
 
             timeinfo = datetime_parser.parse_water_road_time(event_water['Description'])
 
-            description_info = location_parser.parse_water_address(event_water['Description'], 'description')
-
             for coordinate_group in event_water['StopWaterSection_wgs84']['coordinates']:
 
                 latitude = coordinate_group[0][1]
@@ -98,7 +96,7 @@ class WaterImporter(DataImporter):
                 # Convert coordinate to address
                 address = map_converter.convert_coordinate_to_address(latitude, longitude)
 
-                location_info = location_parser.parse_water_address(address, 'location')
+                location_info = location_parser.parse_water_address(address)
 
                 event_model = Event(
                     id=get_uuid(),
@@ -112,7 +110,7 @@ class WaterImporter(DataImporter):
                     end_date=datetime_parser.roc_to_common_date(event_water['FC_Date']),
                     start_time=timeinfo[0],
                     end_time=timeinfo[1],
-                    description=description_info[0],
+                    description=event_water['Description'],
                     update_status='new',
                     update_time=get_current_time()
                 )

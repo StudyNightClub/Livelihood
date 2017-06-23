@@ -10,6 +10,7 @@
 import os
 import urllib.parse
 import requests
+import sys
 
 KEY = os.environ['GOOGLE_GEO_KEY']
 
@@ -49,11 +50,12 @@ def convert_coordinate_to_address(latitude, longitude):
 
     json_address = web_request_address.json()
 
-    if json_address['results']:
+    try:
         return json_address['results'][0]['formatted_address']
-    else:
-        print(json_address)
-        return None
+    except IndexError as e:
+        unexpected_coordinate = "Unexpected coordinate: " + str(latitude) + ", " + str(longitude)
+        print(unexpected_coordinate)
+        return '市區路'
 
 
 # API name: Convert TWD97 to WGS84 (latitude and longitude)

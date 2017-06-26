@@ -2,6 +2,7 @@
 
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
+from datetime import datetime, timezone, timedelta
 import os
 import shutil
 import time
@@ -14,9 +15,10 @@ from . import map_converter
 from . import datetime_parser
 from . import location_parser
 from .dbconnector import DBConnector
-from .dbschema import Event, Area, Coordinate
+from .dbschema import Event, Coordinate, EventType
 
 LDB_URL = os.environ['LDB_URL']
+TZ = timezone(timedelta(hours=8))
 
 class DataImporter(object):
     __metaclass__ = ABCMeta
@@ -24,9 +26,6 @@ class DataImporter(object):
     def __init__(self):
         self.connect = DBConnector(LDB_URL)
         self.session = self.connect.get_session()
-        self.events = []
-        self.groups = []
-        self.coordinates = []
 
     @abstractmethod
     def get_event_type(self):
@@ -45,22 +44,42 @@ class DataImporter(object):
         if not source:
             return
 
-        self.generate_events(source)
-        self._mask_old_entries()
-        self._insert_entries()
+        self._set_events_inactive()
+
+        for e in self.generate_events(source):
+            self._insert_entry(e)
+
         self.session.commit()
         self.session.close()
 
-    def _mask_old_entries(self):
+    def _set_events_inactive(self):
         for e in self.session.query(Event)\
-                     .filter(Event.update_status == 'new')\
-                     .filter(Event.type == self.get_event_type()):
-            e.update_status = 'old'
+                .filter(Event.type == self.get_event_type())\
+                .filter(Event.is_active == True):
+            e.is_active = False
 
-    def _insert_entries(self):
-        self.session.add_all(self.events)
-        self.session.add_all(self.groups)
-        self.session.add_all(self.coordinates)
+    def _insert_entry(self, e):
+        with self.session.no_autoflush:
+            existed = self.session.query(Event)\
+                    .filter(Event.gov_sn == e.gov_sn)\
+                    .filter(Event.type == e.type)\
+                    .filter(Event.city == e.city)\
+                    .filter(Event.district == e.district)\
+                    .filter(Event.road == e.road)\
+                    .filter(Event.detail_addr == e.detail_addr)\
+                    .filter(Event.start_date == e.start_date)\
+                    .filter(Event.end_date == e.end_date)\
+                    .filter(Event.start_time == e.start_time)\
+                    .filter(Event.end_time == e.end_time)\
+                    .filter(Event.description == e.description)\
+                    .first()
+            if existed:
+                existed.update_time = datetime.now(TZ)
+                existed.is_active = True
+            else:
+                e.update_time = e.create_time = datetime.now(TZ)
+                e.is_active = True
+                self.session.add(e)
 
 
 class WaterImporter(DataImporter):
@@ -71,7 +90,7 @@ class WaterImporter(DataImporter):
         super().__init__()
 
     def get_event_type(self):
-        return 'water'
+        return EventType.water
 
     def get_raw_data(self):
         response = requests.get(self._WATER_SOURCE)
@@ -85,45 +104,35 @@ class WaterImporter(DataImporter):
 
     def generate_events(self, source):
         for event_water in source['result']['results']:
-
             timeinfo = datetime_parser.parse_water_road_time(event_water['Description'])
+            coordinates = event_water['StopWaterSection_wgs84']['coordinates'][0]
 
-            for coordinate_group in event_water['StopWaterSection_wgs84']['coordinates']:
+            # Convert coordinate to address
+            latitude = coordinates[0][1]
+            longitude = coordinates[0][0]
+            address = map_converter.convert_coordinate_to_address(latitude, longitude)
 
-                latitude = coordinate_group[0][1]
-                longitude = coordinate_group[0][0]
+            location_info = location_parser.parse_water_address(address)
 
-                # Convert coordinate to address
-                address = map_converter.convert_coordinate_to_address(latitude, longitude)
-
-                location_info = location_parser.parse_water_address(address)
-
-                event_model = Event(
-                    id=get_uuid(),
-                    type=self.get_event_type(),
-                    gov_sn=event_water['SW_No'],
-                    city=location_info[0],
-                    district=location_info[1],
-                    road=location_info[2],
-                    detail_addr=location_info[3],
-                    start_date=datetime_parser.roc_to_common_date(event_water['FS_Date']),
-                    end_date=datetime_parser.roc_to_common_date(event_water['FC_Date']),
-                    start_time=timeinfo[0],
-                    end_time=timeinfo[1],
-                    description=event_water['Description'],
-                    update_status='new',
-                    update_time=get_current_time()
-                )
-                self.events.append(event_model)
-
-                group_model = Area(id=get_uuid(), event_id=event_model.id)
-                self.groups.append(group_model)
-                for coordinate in coordinate_group:
-                    coordinate_model = Coordinate(id=get_uuid(),
-                                                  wgs84_latitude=coordinate[1],
-                                                  wgs84_longitude=coordinate[0],
-                                                  area_id=group_model.id)
-                    self.coordinates.append(coordinate_model)
+            event_model = Event(
+                id=get_uuid(),
+                type=self.get_event_type(),
+                gov_sn=event_water['SW_No'],
+                city=location_info[0],
+                district=location_info[1],
+                road=location_info[2],
+                detail_addr=location_info[3],
+                start_date=datetime_parser.roc_to_common_date(event_water['FS_Date']),
+                end_date=datetime_parser.roc_to_common_date(event_water['FC_Date']),
+                start_time=timeinfo[0],
+                end_time=timeinfo[1],
+                description=event_water['Description'],
+            )
+            for coor in coordinates:
+                event_model.coordinates.append(Coordinate(id=get_uuid(),
+                            wgs84_latitude=coor[1],
+                            wgs84_longitude=coor[0]))
+            yield event_model
 
 
 class RoadImporter(DataImporter):
@@ -134,7 +143,7 @@ class RoadImporter(DataImporter):
         super().__init__()
 
     def get_event_type(self):
-        return 'road'
+        return EventType.road
 
     def get_raw_data(self):
         response = requests.get(self._ROAD_SOURCE)
@@ -171,20 +180,11 @@ class RoadImporter(DataImporter):
                 start_time=timeinfo[0],
                 end_time=timeinfo[1],
                 description=event['NPURP'],
-                update_status='new',
-                update_time=get_current_time()
             )
-            self.events.append(event_model)
-
-            group_model = Area(id=get_uuid(),
-                               event_id=event_model.id)
-            self.groups.append(group_model)
-
-            coordinate_model = Coordinate(id=get_uuid(),
-                                          wgs84_latitude=latitude,
-                                          wgs84_longitude=longitude,
-                                          area_id=group_model.id)
-            self.coordinates.append(coordinate_model)
+            event_model.coordinates.append(Coordinate(id=get_uuid(),
+                        wgs84_latitude=latitude,
+                        wgs84_longitude=longitude))
+            yield event_model
 
 
 class PowerImporter(DataImporter):
@@ -198,7 +198,7 @@ class PowerImporter(DataImporter):
         super().__init__()
 
     def get_event_type(self):
-        return 'power'
+        return EventType.power
 
     def get_raw_data(self):
         # Download file
@@ -226,17 +226,16 @@ class PowerImporter(DataImporter):
         for event in source:
             # Convert address to coordinate
             coordinate = map_converter.convert_address_to_coordinate(event[5])
-
             location_info = location_parser.parse_power_address(event[5])
 
             # First working period
             timeinfo = datetime_parser.parse_power_date_time(event[3])
-            self._get_single_event(event, location_info, timeinfo, coordinate)
+            yield self._get_single_event(event, location_info, timeinfo, coordinate)
 
             # Second working period
             if event[4] and event[4] != '無':
                 timeinfo = datetime_parser.parse_power_date_time(event[4])
-                self._get_single_event(event, location_info, timeinfo, coordinate)
+                yield self._get_single_event(event, location_info, timeinfo, coordinate)
 
     def _get_single_event(self, line, location_info, timeinfo, coordinate):
         event_model = Event(
@@ -252,20 +251,11 @@ class PowerImporter(DataImporter):
             start_time=timeinfo[1],
             end_time=timeinfo[2],
             description=line[2],
-            update_status='new',
-            update_time=get_current_time()
         )
-        self.events.append(event_model)
-
-        group_model = Area(id=get_uuid(),
-                           event_id=event_model.id)
-        self.groups.append(group_model)
-
-        coordinate_model = Coordinate(id=get_uuid(),
-                                      wgs84_latitude=float(coordinate[0]),
-                                      wgs84_longitude=float(coordinate[1]),
-                                      area_id=group_model.id)
-        self.coordinates.append(coordinate_model)
+        event_model.coordinates.append(Coordinate(id=get_uuid(),
+            wgs84_latitude=float(coordinate[0]),
+            wgs84_longitude=float(coordinate[1])))
+        return event_model
 
 
 ### Import all types of livelihood data ###
@@ -279,10 +269,6 @@ def import_all():
 def create_tables():
     connect = DBConnector(LDB_URL)
     connect.create_tables()
-
-
-def get_current_time():
-    return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
 
 
 def get_uuid():

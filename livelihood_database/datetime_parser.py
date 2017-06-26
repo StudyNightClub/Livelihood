@@ -1,23 +1,23 @@
 import re
-from datetime import datetime, time
+from datetime import datetime, date, time
 
 def roc_to_common_date(roc_date):
     roc_date_format = re.compile(r'(\d{3})(\d{2})(\d{2})')
     m = roc_date_format.match(roc_date)
     if m:
         year = int(m.group(1)) + 1911
-        return '{}-{}-{}'.format(year, m.group(2), m.group(3))
+        return date(year=year, month=int(m.group(2)), day=int(m.group(3)))
     else:
-        return roc_date
+        return None
 
 def parse_power_date_time(raw_str):
     tokens = re.split('\s|~', raw_str)
     if len(tokens) != 3:
         return (None, None, None)
 
-    event_date = tokens[0].replace('/', '-')
-    start_time = tokens[1] + ':00'
-    end_time = tokens[2] + ':00'
+    event_date = datetime.strptime(tokens[0], '%Y/%m/%d').date()
+    start_time = datetime.strptime(tokens[1], '%H:%M').time()
+    end_time = datetime.strptime(tokens[2], '%H:%M').time()
     return (event_date, start_time, end_time)
 
 def parse_water_road_time(raw_str):
@@ -46,4 +46,4 @@ def _process_time(prefix, hour, minute):
     if prefix == '下午':
         h = h + 12
 
-    return time(hour=h, minute=m, second=0).strftime('%H:%M:%S')
+    return time(hour=h, minute=m, second=0)

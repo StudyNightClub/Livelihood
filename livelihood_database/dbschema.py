@@ -1,16 +1,24 @@
 # encoding: utf-8
+import enum
+from sqlalchemy import Boolean
 from sqlalchemy import Column
-from sqlalchemy import Integer
-from sqlalchemy import Float
-from sqlalchemy import String
 from sqlalchemy import Date
-from sqlalchemy import Time
 from sqlalchemy import DateTime
+from sqlalchemy import Enum
+from sqlalchemy import FetchedValue
 from sqlalchemy import ForeignKey
+from sqlalchemy import Numeric
+from sqlalchemy import String
+from sqlalchemy import Time
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
+
+class EventType(enum.Enum):
+    water = 1
+    power = 2
+    road = 3
 
 class Event(Base):
     __tablename__ = 'event'
@@ -20,23 +28,24 @@ class Event(Base):
             'description', 'update_time', 'affected_areas'])
 
     # columns
-    id = Column('event_id', String, primary_key=True)
-    gov_sn = Column('gov_serial_number', String)
-    type = Column('event_type', String)
+    id = Column(String, primary_key=True)
+    gov_sn = Column(String)
+    type = Column(Enum(EventType))
     city = Column(String)
     district = Column(String)
-    road = Column('road_street_boulevard_section', String)
-    detail_addr = Column('lane_alley_number', String)
-    start_date = Column(String)
-    end_date = Column(String)
-    start_time = Column(String)
-    end_time = Column(String)
+    road = Column(String)
+    detail_addr = Column(String)
+    start_date = Column(Date)
+    end_date = Column(Date)
+    start_time = Column(Time)
+    end_time = Column(Time)
     description = Column(String)
-    update_time = Column(String)
-    update_status = Column(String)
+    create_time = Column(DateTime, server_default=FetchedValue())
+    update_time = Column(DateTime, server_default=FetchedValue())
+    is_active = Column(Boolean)
 
     # relationships
-    areas = relationship('Area', back_populates='event')
+    coordinates = relationship('Coordinate', back_populates='event')
 
     def to_dict(self, fields=None):
         if fields:
@@ -52,38 +61,22 @@ class Event(Base):
 
     def get_field(self, field):
         if field == 'affected_areas':
-            return [a.to_dict() for a in self.areas]
+            ### TODO: fix to dict
+            return [a.to_dict() for a in self.coordinates]
         else:
             return self.__dict__[field]
 
-class Area(Base):
-    __tablename__ = 'event_coord_group'
-
-    # columns
-    id = Column('group_id', String, primary_key=True)
-    event_id = Column(String, ForeignKey('event.event_id'))
-
-    # relationships
-    event = relationship('Event', back_populates='areas')
-    coordinates = relationship('Coordinate', back_populates='area')
-
-    def to_dict(self):
-        return {
-                   'shape': 'point' if len(self.coordinates) == 1 else 'polygon',
-                   'coordinates': [c.to_dict() for c in self.coordinates]
-               }
-
 class Coordinate(Base):
-    __tablename__ = 'event_coordinate'
+    __tablename__ = 'coordinate'
 
     # columns
-    id = Column('coordinate_id', String, primary_key=True)
-    wgs84_latitude = Column('latitude', Float)
-    wgs84_longitude = Column('longitude', Float)
-    area_id = Column('group_id', String, ForeignKey('event_coord_group.group_id'))
+    id = Column(String, primary_key=True)
+    wgs84_latitude = Column('latitude', Numeric)
+    wgs84_longitude = Column('longitude', Numeric)
+    event_id = Column('event_id', String, ForeignKey('event.id'))
 
     # relationships
-    area = relationship('Area', back_populates='coordinates')
+    event = relationship('Event', back_populates='coordinates')
 
     def to_dict(self):
         return {

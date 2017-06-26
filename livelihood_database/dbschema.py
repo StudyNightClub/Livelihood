@@ -13,12 +13,15 @@ from sqlalchemy import Time
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
+
 Base = declarative_base()
+
 
 class EventType(enum.Enum):
     water = 1
     power = 2
     road = 3
+
 
 class Event(Base):
     __tablename__ = 'event'
@@ -61,7 +64,6 @@ class Event(Base):
 
     def get_field(self, field):
         if field == 'affected_areas':
-            ### TODO: fix to dict
             if len(self.coordinates) == 1:
                 shape = 'point'
             else:
@@ -70,6 +72,7 @@ class Event(Base):
             return [{'shape': shape, 'coordinates': coordinates}]
         else:
             return self.__dict__[field]
+
 
 class Coordinate(Base):
     __tablename__ = 'coordinate'

@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='livelihood_database',
-      version='4.0.1',
+      version='5.0.0',
       description='Create and import livelihood database.',
       url='https://github.com/StudyNightClub/livelihood-database',
       author='Lucas Wang',

@@ -109,3 +109,4 @@ wkotgnews
 *.db
 setup_env.sh
 test.py
+update.py

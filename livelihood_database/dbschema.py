@@ -62,7 +62,12 @@ class Event(Base):
     def get_field(self, field):
         if field == 'affected_areas':
             ### TODO: fix to dict
-            return [a.to_dict() for a in self.coordinates]
+            if len(self.coordinates) == 1:
+                shape = 'point'
+            else:
+                shape = 'polygon'
+            coordinates = [a.to_dict() for a in self.coordinates]
+            return [{'shape': shape, 'coordinates': coordinates}]
         else:
             return self.__dict__[field]
 

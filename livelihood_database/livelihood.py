@@ -14,6 +14,7 @@ import requests
 from . import map_converter
 from . import datetime_parser
 from . import location_parser
+from . import power_web_parser
 from .dbconnector import DBConnector
 from .dbschema import Event, Coordinate, EventType
 
@@ -99,7 +100,7 @@ class WaterImporter(DataImporter):
             return response.json()
         else:
             print('Web (WATER OUTAGE) request is NOT ok. Response status code = %s.'
-                %(response.status_code))
+                % response.status_code)
             return None
 
     def generate_events(self, source):
@@ -113,6 +114,8 @@ class WaterImporter(DataImporter):
             address = map_converter.convert_coordinate_to_address(latitude, longitude)
 
             location_info = location_parser.parse_water_address(address)
+            
+            description_info = location_parser.parse_water_description(event_water['Description'])
 
             event_model = Event(
                 id=get_uuid(),
@@ -126,7 +129,7 @@ class WaterImporter(DataImporter):
                 end_date=datetime_parser.roc_to_common_date(event_water['FC_Date']),
                 start_time=timeinfo[0],
                 end_time=timeinfo[1],
-                description=event_water['Description'],
+                description=description_info,
             )
             for coor in coordinates:
                 event_model.coordinates.append(Coordinate(id=get_uuid(),
@@ -152,7 +155,7 @@ class RoadImporter(DataImporter):
             return response.json()
         else:
             print('Web (ROAD CONSTRUCTION) request is NOT ok. Response status code = %s.'
-                %(response.status_code))
+                % response.status_code)
             return None
 
     def generate_events(self, source):
@@ -189,10 +192,7 @@ class RoadImporter(DataImporter):
 
 class PowerImporter(DataImporter):
 
-    _ZIP_FILE = '台灣電力公司_計畫性工作停電資料.zip'
-    _POWER_SOURCE = ('http://data.taipower.com.tw/opendata/apply/file/d077004/'
-        + urllib.parse.quote(_ZIP_FILE))
-    _TEXT_FILE = 'wkotgnews/102.txt'
+    _POWER_SOURCE = 'http://branch.taipower.com.tw/Content/NoticeBlackout/bulletin.aspx?SiteID=564732646551216421&MmmID=616371300113254267'
 
     def __init__(self):
         super().__init__()
@@ -201,61 +201,44 @@ class PowerImporter(DataImporter):
         return EventType.power
 
     def get_raw_data(self):
-        # Download file
-        response = requests.get(self._POWER_SOURCE, stream=True)
+        response = requests.get(self._POWER_SOURCE)
         if response.status_code == 200:
-            with open(self._ZIP_FILE, 'wb') as fout:
-                shutil.copyfileobj(response.raw, fout)
+            print('Web (POWER OUTAGE) request is ok.')
+            
+            info = power_web_parser.get_html_info(response)
+            return info
         else:
-            print('Download (POWER OUTAGE) file is NOT ok.')
-            return
-
-        # Unzip downloaded file
-        with zipfile.ZipFile(self._ZIP_FILE) as zip_power:
-            file_power = zip_power.extract(self._TEXT_FILE)
-            print('Unzipped (POWER OUTAGE) file is "%s".' %file_power)
-
-        # Read the content of txt file
-        with open(self._TEXT_FILE, 'r') as fin:
-            lines = fin.readlines()
-
-        return [line.strip().split('#') for line in lines[1:]]
+            print('Web (POWER OUTAGE) request is NOT ok. Response status code = %s.' % response.status_code)
+            return None
 
     def generate_events(self, source):
         # arrange data and insert to table
         for event in source:
-            # Convert address to coordinate
-            coordinate = map_converter.convert_address_to_coordinate(event[5])
-            location_info = location_parser.parse_power_address(event[5])
-
-            # First working period
-            timeinfo = datetime_parser.parse_power_date_time(event[3])
-            yield self._get_single_event(event, location_info, timeinfo, coordinate)
-
-            # Second working period
-            if event[4] and event[4] != '無':
-                timeinfo = datetime_parser.parse_power_date_time(event[4])
-                yield self._get_single_event(event, location_info, timeinfo, coordinate)
-
-    def _get_single_event(self, line, location_info, timeinfo, coordinate):
-        event_model = Event(
-            id=get_uuid(),
-            type=self.get_event_type(),
-            gov_sn=line[1],
-            city='台'+str(location_info[0]),
-            district=location_info[1],
-            road=location_info[2],
-            detail_addr=location_info[3],
-            start_date=timeinfo[0],
-            end_date=timeinfo[0],
-            start_time=timeinfo[1],
-            end_time=timeinfo[2],
-            description=line[2],
-        )
-        event_model.coordinates.append(Coordinate(id=get_uuid(),
-            wgs84_latitude=float(coordinate[0]),
-            wgs84_longitude=float(coordinate[1])))
-        return event_model
+                      
+            timeinfo = power_web_parser.get_html_date_time(event[0], event[1], event[2])
+            
+            sn_info, description_info = power_web_parser.get_html_serial_number_description(event[3])
+            
+            location_info, (latitude, longitude) = power_web_parser.get_html_address_coordinate(event[4])
+            
+            event_model = Event(
+                id=get_uuid(),
+                type=self.get_event_type(),
+                gov_sn=sn_info,
+                city='台'+str(location_info[0]),
+                district=location_info[1],
+                road=location_info[2],
+                detail_addr=location_info[3],
+                start_date=timeinfo[0],
+                end_date=timeinfo[0],
+                start_time=timeinfo[1],
+                end_time=timeinfo[2],
+                description=description_info,
+            )
+            event_model.coordinates.append(Coordinate(id=get_uuid(),
+                wgs84_latitude=latitude,
+                wgs84_longitude=longitude))
+            yield event_model
 
 
 ### Import all types of livelihood data ###
@@ -273,3 +256,4 @@ def create_tables():
 
 def get_uuid():
     return str(uuid.uuid4())
+

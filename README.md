@@ -14,7 +14,7 @@ In shell:
     $ export LDB_URL=<database_url>
     $ export GOOGLE_GEO_KEY=<google_geocode_api_key>
 
-Since 6.0, livelihood_database uses sqlalchemy to handle database actions, so
+Since 4.0, livelihood_database uses sqlalchemy to handle database actions, so
 multiple DB types are supported. Specify your DB type in the URL schema.
 For detailed documentation, check
 [here](http://docs.sqlalchemy.org/en/latest/index.html).

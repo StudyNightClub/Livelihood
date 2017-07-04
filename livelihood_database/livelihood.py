@@ -214,12 +214,8 @@ class PowerImporter(DataImporter):
     def generate_events(self, source):
         # arrange data and insert to table
         for event in source:
-                      
-            timeinfo = power_web_parser.get_html_date_time(event[0], event[1], event[2])
             
-            sn_info, description_info = power_web_parser.get_html_serial_number_description(event[3])
-            
-            location_info, (latitude, longitude) = power_web_parser.get_html_address_coordinate(event[4])
+            (date_info, start_time_info, end_time_info, sn_info, description_info, location_info, latitude, longitude) = event
             
             event_model = Event(
                 id=get_uuid(),
@@ -229,10 +225,10 @@ class PowerImporter(DataImporter):
                 district=location_info[1],
                 road=location_info[2],
                 detail_addr=location_info[3],
-                start_date=timeinfo[0],
-                end_date=timeinfo[0],
-                start_time=timeinfo[1],
-                end_time=timeinfo[2],
+                start_date=date_info,
+                end_date=date_info,
+                start_time=start_time_info,
+                end_time=end_time_info,
                 description=description_info,
             )
             event_model.coordinates.append(Coordinate(id=get_uuid(),

@@ -6,11 +6,11 @@ import re
 import datetime_parser
 import map_converter
 
-INFO_REGEX = '([A-Z\da-z]*)(.+)'
+_INFO_REGEX = '([A-Z\da-z]*)(.+)'
 
 _HTML_ADDRESS_REGEX = '(?:\d*)?(?:台灣)?(.*?市)((?:.*?區)?)((?:.*?(?:路|街|大道|橋)(?:[一二三四五六七八九十\d]*?段)?)?)((?:\d*?巷)?(?:\d*?弄)?(?:[-\d]*?號)?)(?:.*)'
 
-info_pattern = re.compile(INFO_REGEX)
+info_pattern = re.compile(_INFO_REGEX)
 address_pattern = re.compile(_HTML_ADDRESS_REGEX)
 
 def get_html_info(results):
@@ -25,13 +25,31 @@ def get_html_info(results):
         
         i = 0
         while( i != len(table_content)):
-            event = []
-            event.append(table_date.contents[0])      # start date (end date)
-            event.append(table_content[i].contents[0])     # start time
-            event.append(table_content[i].contents[2])     # end time
-            event.append(table_content[i+1].contents[0])       # serial number and description
-            event.append(table_content[i+1].contents[2])       # address
-            events.append(event)
+            
+            # start date (end date)
+            date_info = get_html_date(table_date.contents[0])
+            
+            # start time
+            start_time_info = get_html_start_time(table_content[i].contents[0])
+            
+            # end time
+            end_time_info = get_html_end_time(table_content[i].contents[2])
+            
+            # serial number and description
+            sn_info, description_info = get_html_serial_number_description(table_content[i+1].contents[0])
+            
+            # address and coordinate
+            location_info, (latitude, longitude) = get_html_address_coordinate(table_content[i+1].contents[2])
+            
+            events.append((
+                date_info, 
+                start_time_info, 
+                end_time_info, 
+                sn_info, 
+                description_info, 
+                location_info, 
+                latitude, 
+                longitude))
             i += 2
     
     return events
@@ -47,12 +65,14 @@ def get_html_date(raw_str_0):
             date_group[1] = date_group[1].zfill(2)
             date_group[2] = date_group[2].zfill(2)
             event_date = datetime_parser.roc_to_common_date(''.join(date_group))
-        else:
-            event_date = '0000-00-00'
             
-        return event_date
-        
+            return event_date
+        else:
+            print('It is not correct data format to get the date of power event.')
+            return None        
+    
     else:
+        print('The date of power event is None')
         return None
 
 def get_html_start_time(raw_str_1):
@@ -64,11 +84,14 @@ def get_html_start_time(raw_str_1):
         
         if len(start_time_group)>=2:
             event_start_time = datetime_parser._process_time(None, start_time_group[0], start_time_group[1])
+            
+            return event_start_time 
         else:
-            event_start_time = '99:99:99'
-        
-        return event_start_time        
+            print('It is not correct data format to get the start time of power event.')
+            return None        
+    
     else:
+        print('The start time of power event is None')
         return None
 
 def get_html_end_time(raw_str_2):
@@ -80,15 +103,15 @@ def get_html_end_time(raw_str_2):
         
         if len(end_time_group)>=2:
             event_end_time = datetime_parser._process_time(None, end_time_group[0], end_time_group[1])
+            
+            return event_end_time
         else:
-            event_end_time = '99:99:99'
-        
-        return event_end_time        
+            print('It is not correct data format to get the end time of power event.')
+            return None        
+    
     else:
+        print('The end time of power event is None')
         return None
-
-def get_html_date_time(raw_str_0, raw_str_1, raw_str_2):
-    return (get_html_date(raw_str_0), get_html_start_time(raw_str_1), get_html_end_time(raw_str_2))
 
 def get_html_serial_number_description(raw_str_3):
     if raw_str_3:
@@ -105,9 +128,11 @@ def get_html_serial_number_description(raw_str_3):
             
             return (event_serial_number, event_description)
         else:
-            return ('000000', 'null')
+            print('It does not match any groups in the regex parser of serial number and description of power event.')
+            return (None, None)
             
     else:
+        print('The serial number and description of power event are None')
         return (None, None)
 
 def get_html_address_coordinate(raw_str_4):
@@ -123,38 +148,16 @@ def get_html_address_coordinate(raw_str_4):
                 address = ''.join(sub_address.groups())               
                 coordinate = map_converter.convert_address_to_coordinate(address)
                 
-                if coordinate != (25.027223, 121.5764989):
+                if coordinate != (None, None):
                     return (sub_address.groups(), coordinate)
         
         if not sub_address:
-            return (('null', 'null', 'null', 'null'), (25.027223, 121.5764989))
+            print('It does not match any groups in the regex parser of address of power event.')
+            return ((None, None, None, None), (None, None))
         
-        return (('市', '區', '路', '象山'), coordinate)
+        print('It is failed to convert address to coordinate in the power event.')
+        return ((None, None, None, None), coordinate)
         
     else:
+        print('The address of power event is None')
         return ((None, None, None, None), (None, None))
-
-
-# """ Log for testing """
-# def get_raw_data():
-    # _POWER_SOURCE = 'http://branch.taipower.com.tw/Content/NoticeBlackout/bulletin.aspx?SiteID=564732646551216421&MmmID=616371300113254267'
-    
-    # response = requests.get(_POWER_SOURCE)
-    
-    # if response.status_code == 200:
-        # print('Web (POWER OUTAGE) request is ok.')
-        # return response
-    # else:
-        # print('Web (POWER OUTAGE) request is NOT ok. Response status code = %s.' % response.status_code)
-        # return None
-
-# for event_power in get_html_info(get_raw_data()):
-    # datetime = get_html_date_time(event_power[0], event_power[1], event_power[2])
-    # print(datetime)    
-    
-    # sn_info, description_info = get_html_serial_number_description(event_power[3])
-    # print(sn_info, description_info)
-    
-    # address, (latitude, longitude) = get_html_address_coordinate(event_power[4])
-    # print(address[0], address[1], address[2], address[3])
-    # print(latitude, longitude)

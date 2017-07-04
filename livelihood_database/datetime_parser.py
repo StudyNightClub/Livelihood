@@ -10,16 +10,6 @@ def roc_to_common_date(roc_date):
     else:
         return None
 
-# def parse_power_date_time(raw_str):
-    # tokens = re.split('\s|~', raw_str)
-    # if len(tokens) != 3:
-        # return (None, None, None)
-
-    # event_date = datetime.strptime(tokens[0], '%Y/%m/%d').date()
-    # start_time = datetime.strptime(tokens[1], '%H:%M').time()
-    # end_time = datetime.strptime(tokens[2], '%H:%M').time()
-    # return (event_date, start_time, end_time)
-
 def parse_water_road_time(raw_str):
     if raw_str:
         raw_str = re.sub(':', '時', raw_str)

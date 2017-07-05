@@ -3,8 +3,8 @@
 from bs4 import BeautifulSoup
 import requests
 import re
-import datetime_parser
-import map_converter
+from . import datetime_parser
+from . import map_converter
 
 _INFO_REGEX = '([A-Z\da-z]*)(.+)'
 

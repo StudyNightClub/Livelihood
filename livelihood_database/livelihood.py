@@ -48,7 +48,9 @@ class DataImporter(object):
         self._set_events_inactive()
 
         for e in self.generate_events(source):
-            self._insert_entry(e)
+            e.is_active = True
+            if e.is_valid():
+                self._insert_entry(e)
 
         self.session.commit()
         self.session.close()
@@ -79,7 +81,6 @@ class DataImporter(object):
                 existed.is_active = True
             else:
                 e.update_time = e.create_time = datetime.now(TZ)
-                e.is_active = True
                 self.session.add(e)
 
 

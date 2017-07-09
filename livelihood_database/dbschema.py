@@ -32,20 +32,20 @@ class Event(Base):
 
     # columns
     id = Column(String, primary_key=True)
-    gov_sn = Column(String)
-    type = Column(Enum(EventType))
-    city = Column(String)
-    district = Column(String)
-    road = Column(String)
+    gov_sn = Column(String, nullable=False)
+    type = Column(Enum(EventType), nullable=False)
+    city = Column(String, nullable=False)
+    district = Column(String, nullable=False)
+    road = Column(String, nullable=False)
     detail_addr = Column(String)
-    start_date = Column(Date)
-    end_date = Column(Date)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
     start_time = Column(Time)
     end_time = Column(Time)
     description = Column(String)
     create_time = Column(DateTime, server_default=FetchedValue())
     update_time = Column(DateTime, server_default=FetchedValue())
-    is_active = Column(Boolean)
+    is_active = Column(Boolean, nullable=False)
 
     # relationships
     coordinates = relationship('Coordinate', back_populates='event')
@@ -73,15 +73,21 @@ class Event(Base):
         else:
             return self.__dict__[field]
 
+    def is_valid(self):
+        for c in Event.__table__.columns:
+            if not c.nullable and self.__dict__[c.name] is None:
+                return False
+        return True
+
 
 class Coordinate(Base):
     __tablename__ = 'coordinate'
 
     # columns
     id = Column(String, primary_key=True)
-    wgs84_latitude = Column('latitude', Numeric)
-    wgs84_longitude = Column('longitude', Numeric)
-    event_id = Column('event_id', String, ForeignKey('event.id'))
+    wgs84_latitude = Column('latitude', Numeric, nullable=False)
+    wgs84_longitude = Column('longitude', Numeric, nullable=False)
+    event_id = Column('event_id', String, ForeignKey('event.id'), nullable=False)
 
     # relationships
     event = relationship('Event', back_populates='coordinates')

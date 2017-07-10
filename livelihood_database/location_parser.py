@@ -10,28 +10,28 @@ address_pattern = re.compile(_ADDRESS_REGEX)
 description_pattern = re.compile(_DESCRIPTION_REGEX)
 
 """ Address of ROAD CONSTRUCTION """
-def parse_road_address(address_name):    
+def parse_road_address(address_name):
     sub_address = address_pattern.search(address_name)
     if sub_address:
         return sub_address.groups()
     else:
-        print('It does not match any groups in the regex parser of address of road event.')
+        print('Unable to parse address: ' + address_name)
         return (None, None, None, None)
 
 """ Address of WATER OUTAGE """
 def parse_water_address(address_name):
-    sub_address = address_pattern.search(address_name)        
+    sub_address = address_pattern.search(address_name)
     if sub_address:
         return sub_address.groups()
     else:
-        print('It does not match any groups in the regex parser of address of water event.')
+        print('Unable to parse address: ' + address_name)
         return (None, None, None, None)
-    
-def parse_water_description(description):    
+
+def parse_water_description(description):
     sub_description = description_pattern.search(description)
     if sub_description:
         return sub_description.groups()
     else:
-        print('It does not match any groups in the regex parser of description of water event.')
+        print('Unable to parse description: ' + description)
         return None
 

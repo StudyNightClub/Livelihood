@@ -6,7 +6,7 @@ from . import dbschema
 
 class DBConnector(object):
     def __init__(self, url):
-        self._engine = create_engine(url, echo=True)
+        self._engine = create_engine(url, echo=False)
         self._Session = sessionmaker(self._engine)
 
     def create_tables(self):

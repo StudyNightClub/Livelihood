@@ -32,14 +32,21 @@ def _process_time(prefix, hour, minute):
         h = int(hour.replace('時', ''))
     else:
         h = 0
-    
+
     if minute:
         m = int(minute.replace('分', ''))
     else:
         m = 0
 
     if prefix == '下午' or prefix == '傍晚' or prefix == '晚上' or prefix == '晚間':
+        if h == 0:
+            h = 12
+        elif prefix == '下午' and h == 12:
+            h = 0
         h = h + 12
+
+    if h == 24:
+        h = 0
 
     return time(hour=h, minute=m, second=0)
 

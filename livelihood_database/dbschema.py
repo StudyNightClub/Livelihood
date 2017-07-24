@@ -26,7 +26,7 @@ class EventType(enum.Enum):
 class Event(Base):
     __tablename__ = 'event'
 
-    _FIELDS = set(['id', 'gov_sn', 'type', 'city', 'district', 'road',
+    _FIELDS = set(['id', 'gov_sn', 'type', 'city', 'district',
             'detail_addr', 'start_date', 'end_date', 'start_time', 'end_time',
             'description', 'update_time', 'affected_areas'])
 
@@ -34,9 +34,8 @@ class Event(Base):
     id = Column(String, primary_key=True)
     gov_sn = Column(String, nullable=False)
     type = Column(Enum(EventType), nullable=False)
-    city = Column(String, nullable=False)
-    district = Column(String, nullable=False)
-    road = Column(String, nullable=False)
+    city = Column(String)
+    district = Column(String)
     detail_addr = Column(String)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
@@ -97,3 +96,4 @@ class Coordinate(Base):
                    'wgs84_latitude': self.wgs84_latitude,
                    'wgs84_longitude': self.wgs84_longitude
                }
+

@@ -68,7 +68,6 @@ class DataImporter(object):
                     .filter(Event.type == e.type)\
                     .filter(Event.city == e.city)\
                     .filter(Event.district == e.district)\
-                    .filter(Event.road == e.road)\
                     .filter(Event.detail_addr == e.detail_addr)\
                     .filter(Event.start_date == e.start_date)\
                     .filter(Event.end_date == e.end_date)\
@@ -124,8 +123,7 @@ class WaterImporter(DataImporter):
                 gov_sn=event_water['SW_No'],
                 city=location_info[0],
                 district=location_info[1],
-                road=location_info[2],
-                detail_addr=location_info[3],
+                detail_addr=location_info[2],
                 start_date=datetime_parser.roc_to_common_date(event_water['FS_Date']),
                 end_date=datetime_parser.roc_to_common_date(event_water['FC_Date']),
                 start_time=timeinfo[0],
@@ -177,8 +175,7 @@ class RoadImporter(DataImporter):
                 gov_sn='#'.join((event['AC_NO'], event['SNO'])),
                 city=location_info[0],
                 district=location_info[1],
-                road=location_info[2],
-                detail_addr=location_info[3],
+                detail_addr=location_info[2],
                 start_date=datetime_parser.roc_to_common_date(event['CB_DA']),
                 end_date=datetime_parser.roc_to_common_date(event['CE_DA']),
                 start_time=timeinfo[0],
@@ -222,10 +219,9 @@ class PowerImporter(DataImporter):
                 id=get_uuid(),
                 type=self.get_event_type(),
                 gov_sn=sn_info,
-                city='台'+str(location_info[0]),
+                city=location_info[0],
                 district=location_info[1],
-                road=location_info[2],
-                detail_addr=location_info[3],
+                detail_addr=location_info[2],
                 start_date=date_info,
                 end_date=date_info,
                 start_time=start_time_info,
@@ -253,4 +249,5 @@ def create_tables():
 
 def get_uuid():
     return str(uuid.uuid4())
+
 

@@ -6,12 +6,13 @@ import re
 from . import datetime_parser
 from . import map_converter
 
-_INFO_REGEX = '([A-Z\da-z]*)(.+)'
+_SN_DESC_INFO_REGEX = '([A-Z\da-z]*)(.+)'
+_ADDRESS_REGEX = '(?:\d*)?(?:台灣)?((?:.*?市)?)((?:.*?區)?)((?:.*?(?:路|街|大道|橋))?(?:[一二三四五六七八九十\d]*?段)?(?:\d*?巷)?(?:\d*?弄)?(?:[-\d]*?號)?)(?:.*)'
+_MAP_LOCATION_REGEX = '(?:\d*)?(?:台灣)?(.*?市)?(.*?區)?(.*)?'
 
-_HTML_ADDRESS_REGEX = '(?:\d*)?(?:台灣)?(.*?市)((?:.*?區)?)((?:.*?(?:路|街|大道|橋)(?:[一二三四五六七八九十\d]*?段)?)?)((?:\d*?巷)?(?:\d*?弄)?(?:[-\d]*?號)?)(?:.*)'
-
-info_pattern = re.compile(_INFO_REGEX)
-address_pattern = re.compile(_HTML_ADDRESS_REGEX)
+info_pattern = re.compile(_SN_DESC_INFO_REGEX)
+address_pattern = re.compile(_ADDRESS_REGEX)
+location_pattern = re.compile(_MAP_LOCATION_REGEX)
 
 def get_html_info(results):
     html_soup = BeautifulSoup(results.text, 'lxml')
@@ -135,29 +136,82 @@ def get_html_serial_number_description(raw_str_3):
         print('The serial number and description of power event are None')
         return (None, None)
 
+def substitute(sub_before, sub_after, address_str, delete_flag):
+    str = list(address_str)    
+    i = 0
+    while(i != len(str)):
+        if str[i] == sub_before:
+            if not delete_flag:
+                if not i == 0:
+                    if str[i-1].isnumeric():
+                        str[i] = sub_after
+                    else:
+                        str[i] = ''
+            else:
+                if not i == 0 and not str[i-1].isnumeric():
+                    str[i] = sub_after
+        i += 1    
+    return ''.join(str)
+
+def substitute_address_conjunction(str):
+    str = substitute('－', '-', str, False)
+    str = substitute('之', '-', str, False)
+    str = substitute('至', '號', str, False)
+    str = substitute('及', '號', str, False)
+    str = re.sub('．|‧|、|／|/|～|~', '號', str)
+    str = substitute('號', '', str, True)
+    return str
+
 def get_html_address_coordinate(raw_str_4):
     if raw_str_4:
-        address_tokens = re.split('，', raw_str_4)
+        address_token = re.sub('\s|（|）', '', raw_str_4)
+        address_list = re.split('，', address_token)
 
-        for address_token in address_tokens:
-            address_token = re.sub('‧|、|－|之|至|及', '-', address_token)
+        for str in address_list:
+            str = substitute_address_conjunction(str)
+            address = address_pattern.search(str)
 
-            sub_address = address_pattern.search(address_token)
+            """ Grep automatically the next address of the address list if it is unable to parse the address. """
+            if address:
+                address_groups = list(address.groups())
+                if not address_groups[0]:
+                    address_groups[0] = '台北市'
+                district = address_groups[1]
+                final_address = ''.join(address_groups)
 
-            if sub_address:
-                address = ''.join(sub_address.groups())
-                coordinate = map_converter.convert_address_to_coordinate(address)
+                coordinate, raw_location = map_converter.convert_address_to_coordinate(final_address)
 
-                if coordinate != (None, None):
-                    return (sub_address.groups(), coordinate)
+                location = substitute('號', '', raw_location, True)
+                index_num = location.rfind('號')
+                if index_num != -1:
+                    location = location[:(index_num+1)]
 
-        if not sub_address:
+                """ Grep automatically the next address of the address list if it is unable to convert the location. """
+                if location:
+                    final_location = location_pattern.search(location)
+
+                    if final_location:
+                        final_location_groups = list(final_location.groups())
+                        if not final_location_groups[0]:
+                            final_location_groups[0] = '台北市'
+                        if not final_location_groups[1] and district:
+                            final_location_groups[1] = district
+                        final_location_groups = tuple(final_location_groups)
+
+                        return (final_location_groups, coordinate)
+                    else:
+                        print('Unable to parse location: ' + raw_location)
+                        return ((None, None, None), coordinate)
+        
+        if not address:
             print('Unable to parse address: ' + raw_str_4)
-            return ((None, None, None, None), (None, None))
-
-        print('It is failed to convert address to coordinate: ' + address)
-        return ((None, None, None, None), coordinate)
-
+            return ((None, None, None), (None, None))
+        
+        print('It is failed to convert address to coordinate: ' + final_address)
+        return ((None, None, None), coordinate)
+        
     else:
         print('The address of power event is None')
-        return ((None, None, None, None), (None, None))
+        return ((None, None, None), (None, None))
+
+

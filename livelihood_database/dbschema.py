@@ -51,29 +51,6 @@ class Event(Base):
     # relationships
     coordinates = relationship('Coordinate', back_populates='event')
 
-    def to_dict(self, fields=None):
-        if fields:
-            fields = set(filter(self._FIELDS.__contains__, fields))
-            fields.add('id')
-        else:
-            fields = list(self._FIELDS)
-
-        result = {}
-        for f in fields:
-            result[f] = self.get_field(f)
-        return result
-
-    def get_field(self, field):
-        if field == 'affected_areas':
-            if len(self.coordinates) == 1:
-                shape = 'point'
-            else:
-                shape = 'polygon'
-            coordinates = [a.to_dict() for a in self.coordinates]
-            return [{'shape': shape, 'coordinates': coordinates}]
-        else:
-            return self.__dict__[field]
-
     def is_valid(self):
         for c in Event.__table__.columns:
             if not c.nullable and self.__dict__[c.name] is None:
@@ -92,10 +69,3 @@ class Coordinate(Base):
 
     # relationships
     event = relationship('Event', back_populates='coordinates')
-
-    def to_dict(self):
-        return {
-                   'wgs84_latitude': self.wgs84_latitude,
-                   'wgs84_longitude': self.wgs84_longitude
-               }
-

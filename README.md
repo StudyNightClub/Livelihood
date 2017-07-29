@@ -1,4 +1,4 @@
-# livelihood-database v6.0.0
+# livelihood-database v7.0.0
 
 Create and populate livelihood DB.
 

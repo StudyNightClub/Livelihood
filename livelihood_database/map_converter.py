@@ -23,11 +23,11 @@ def convert_address_to_coordinate(address_name):
             return ((latitude, longitude), formatted_address)
         else:
             print('Status: ' + json_coordinate['status'] + ', ' + 'unexpected address: ' + address_name)
-            return ((None, None), None)
+            return ((None, None), '')
 
     else:
         print('Web (ADDRESS TO COORDINATE) request is NOT ok. Request status code = %s.' % web_request_coordinate.status_code)
-        return ((None, None), None)
+        return ((None, None), '')
 
 def convert_coordinate_to_address(latitude, longitude):
 
@@ -42,12 +42,12 @@ def convert_coordinate_to_address(latitude, longitude):
             return json_address['results'][0]['formatted_address']
         else:
             print('Unexpected coordinate: (%s, %s)' % (str(latitude), str(longitude)))
-            return None
+            return ''
     
     else:
         print('Web (COORDINATE TO ADDRESS) request is NOT ok. Request status code = %s.'
             % web_request_address.status_code)
-        return None
+        return ''
 
 def twd97_to_wgs84(x, y):
     a = 6378137.0
@@ -88,6 +88,5 @@ def twd97_to_wgs84(x, y):
     longitude = (longitude * 180) / math.pi
 
     return (latitude, longitude)
-
 
 
